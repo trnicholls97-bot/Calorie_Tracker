@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FUEL</title>
+</head>
+<body>
+  <h1>FUEL Tracker</h1>
+
+  <textarea id="foodInput" placeholder="Enter food..."></textarea>
+  <button onclick="logFood()">Log</button>
+
+  <div id="log"></div>
+
+<script>
+async function logFood() {
+  const input = document.getElementById('foodInput').value;
+
+  const res = await fetch('/api/log-food', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input })
+  });
+
+  const data = await res.json();
+  console.log(data);
+}
+</script>
+</body>
+</html>
