@@ -1,3 +1,7 @@
+export const config = {
+  runtime: 'nodejs'
+};
+
 import { parseFood } from '../lib/anthropic.js';
 import { saveEntry } from '../lib/firebase.js';
 
