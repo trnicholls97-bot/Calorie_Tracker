@@ -1,59 +1,142 @@
-<script>
-async function loadEntries() {
-  const log = document.getElementById('log');
-  log.innerHTML = 'Loading...';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FUEL</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 16px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      margin-bottom: 12px;
+    }
+    button {
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    .entry {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 6px;
+    }
+    .error {
+      color: red;
+      margin-top: 12px;
+    }
+    .status {
+      color: #555;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>FUEL Tracker</h1>
 
-  try {
-    const res = await fetch('/api/get-entries');
-    const entries = await res.json();
+  <textarea id="foodInput" placeholder="Enter food, e.g. 2 eggs and toast"></textarea>
+  <br />
+  <button id="logBtn">Log Food</button>
 
-    if (!Array.isArray(entries) || !entries.length) {
-      log.innerHTML = '<p>No entries yet.</p>';
-      return;
+  <div id="status" class="status"></div>
+  <div id="error" class="error"></div>
+  <hr />
+  <h2>Entries</h2>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const errorEl = document.getElementById('error');
+    const statusEl = document.getElementById('status');
+    const inputEl = document.getElementById('foodInput');
+    const buttonEl = document.getElementById('logBtn');
+
+    function setStatus(message) {
+      statusEl.textContent = message || '';
     }
 
-    log.innerHTML = entries.map(entry => `
-      <div style="border:1px solid #ccc; padding:12px; margin:8px 0;">
-        <strong>${entry.food}</strong><br>
-        Portion: ${entry.portion}<br>
-        Calories: ${entry.calories}<br>
-        Protein: ${entry.protein_g ?? entry.protein ?? 0}g<br>
-        Carbs: ${entry.carbs_g ?? entry.carbs ?? 0}g<br>
-        Fat: ${entry.fat_g ?? entry.fat ?? 0}g<br>
-        <small>${entry.timestamp}</small>
-      </div>
-    `).join('');
-  } catch (err) {
-    log.innerHTML = `<p style="color:red;">Failed to load entries: ${err.message}</p>`;
-  }
-}
-
-async function logFood() {
-  const inputEl = document.getElementById('foodInput');
-  const log = document.getElementById('log');
-  const input = inputEl.value.trim();
-
-  if (!input) return;
-
-  try {
-    const res = await fetch('/api/log-food', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to log food');
+    function setError(message) {
+      errorEl.textContent = message || '';
     }
 
-    inputEl.value = '';
-    await loadEntries();
-  } catch (err) {
-    log.innerHTML = `<p style="color:red;">${err.message}</p>`;
-  }
-}
+    function renderEntries(entries) {
+      if (!Array.isArray(entries) || entries.length === 0) {
+        logEl.innerHTML = '<p>No entries yet.</p>';
+        return;
+      }
 
-loadEntries();
-</script>
+      logEl.innerHTML = entries.map(entry => `
+        <div class="entry">
+          <strong>${entry.food ?? 'Unknown food'}</strong><br>
+          Portion: ${entry.portion ?? '—'}<br>
+          Calories: ${entry.calories ?? 0}<br>
+          Protein: ${entry.protein_g ?? entry.protein ?? 0}g<br>
+          Carbs: ${entry.carbs_g ?? entry.carbs ?? 0}g<br>
+          Fat: ${entry.fat_g ?? entry.fat ?? 0}g<br>
+          <small>${entry.timestamp ?? ''}</small>
+        </div>
+      `).join('');
+    }
+
+    async function loadEntries() {
+      setError('');
+      setStatus('Loading entries...');
+
+      try {
+        const res = await fetch('/api/get-entries');
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load entries');
+        }
+
+        renderEntries(data);
+        setStatus('');
+      } catch (err) {
+        setStatus('');
+        setError(`Load failed: ${err.message}`);
+      }
+    }
+
+    async function logFood() {
+      const input = inputEl.value.trim();
+      if (!input) return;
+
+      setError('');
+      setStatus('Logging food...');
+      buttonEl.disabled = true;
+
+      try {
+        const res = await fetch('/api/log-food', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to log food');
+        }
+
+        inputEl.value = '';
+        setStatus('Saved.');
+        await loadEntries();
+      } catch (err) {
+        setStatus('');
+        setError(`Log failed: ${err.message}`);
+      } finally {
+        buttonEl.disabled = false;
+      }
+    }
+
+    buttonEl.addEventListener('click', logFood);
+    loadEntries();
+  </script>
+</body>
+</html>
