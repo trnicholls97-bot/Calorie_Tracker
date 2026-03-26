@@ -1,14 +1,7 @@
-export const config = {
-  runtime: 'nodejs'
-};
-
-import { getEntries } from '../lib/firebase.js';
+export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
-  try {
-    const entries = await getEntries();
-    res.status(200).json(entries);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  return res.json({
+    hasFirebaseEnv: !!process.env.FIREBASE_SERVICE_ACCOUNT
+  });
 }
