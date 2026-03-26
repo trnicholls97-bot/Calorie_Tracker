@@ -1,3 +1,7 @@
+export const config = {
+  runtime: 'nodejs'
+};
+
 import { getEntries } from '../lib/firebase.js';
 
 export default async function handler(req, res) {
