@@ -888,6 +888,30 @@ button,input,textarea{
               </div>
             </div>
 
+            <!-- Goal Source Block -->
+            <div style="margin-top:16px;padding:12px;border:1px solid var(--border);border-radius:16px;background:var(--surface2)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+                <div>
+                  <div style="font-size:.68rem;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase">Goal Source</div>
+                  <div id="goalSourceLabel" style="font-size:.95rem;color:var(--text);margin-top:3px">Synced from workout app</div>
+                </div>
+                <button id="goalModeToggle" class="ghost-btn" style="font-size:.75rem;padding:6px 10px" type="button">Custom</button>
+              </div>
+              <div id="customGoalSection" style="display:none">
+                <div style="margin-bottom:10px">
+                  <label for="customGoalInput" style="display:block;font-size:.68rem;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Custom Target</label>
+                  <div class="goal-input-wrap">
+                    <input class="goal-input" id="customGoalInput" type="number" min="500" max="9999" inputmode="numeric" style="font-size:1.5rem">
+                    <span class="goal-unit">kcal</span>
+                  </div>
+                </div>
+                <div style="padding:10px;border-top:1px solid var(--border);border-radius:12px;margin-top:8px;background:rgba(255,255,255,.02)">
+                  <div style="font-size:.65rem;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase">Synced Target (Reference)</div>
+                  <div id="syncedTargetRef" style="font-size:1.2rem;color:var(--muted);margin-top:4px">—</div>
+                </div>
+              </div>
+            </div>
+
             <div class="hero-grid">
               <div class="ring-wrap">
                 <div class="ring-shell">
@@ -1021,10 +1045,143 @@ button,input,textarea{
 
 <div class="toast" id="toast"></div>
 
+<!-- Firebase Web SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
+
 <script>
+// Firebase initialization - reuse same project as IronLog (workout app)
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB4p9ladsBpr4CoMPnysQbDNcWMiUR5onc",
+  authDomain: "ironlog-41457.firebaseapp.com",
+  projectId: "ironlog-41457",
+  storageBucket: "ironlog-41457.firebasestorage.app",
+  messagingSenderId: "1049172749246",
+  appId: "1:1049172749246:web:71289c76d1e1fba8d167ef"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+const fbAuth = firebase.auth();
+const fbDb = firebase.firestore();
+
 const STORAGE_KEY_GOAL = 'fuel_goal';
+const STORAGE_KEY_GOAL_MODE = 'fuel_goal_mode';
+const STORAGE_KEY_CUSTOM_GOAL = 'fuel_custom_goal';
 let entries = [];
+let syncedCalorieSettings = null; // Synced from workout app
 let goal = parseInt(localStorage.getItem(STORAGE_KEY_GOAL) || '2000', 10);
+
+// ══════════════════════════════════════════════
+//  SYNCED CALORIE SETTINGS MANAGEMENT
+// ══════════════════════════════════════════════
+
+/** Load synced calorie settings from Firebase */
+async function loadSyncedCalorieSettings() {
+  const user = fbAuth.currentUser;
+  if (!user) {
+    syncedCalorieSettings = null;
+    updateGoalDisplay();
+    return;
+  }
+
+  try {
+    const userDoc = await fbDb.collection('users').doc(user.uid).get();
+    if (userDoc.exists && userDoc.data().calorieSettings) {
+      syncedCalorieSettings = userDoc.data().calorieSettings;
+      updateGoalDisplay();
+    }
+  } catch (err) {
+    console.warn('Failed to load synced calorie settings:', err.message);
+  }
+}
+
+/** Calculate effective goal based on priority: custom > synced > maintenance > 2000 */
+function calculateEffectiveGoal() {
+  const goalMode = localStorage.getItem(STORAGE_KEY_GOAL_MODE) || 'synced';
+
+  // Priority 1: Custom override if enabled
+  if (goalMode === 'custom') {
+    const customGoal = parseInt(localStorage.getItem(STORAGE_KEY_CUSTOM_GOAL) || '0', 10);
+    if (customGoal > 0) return customGoal;
+  }
+
+  // Priority 2: Synced daily target from workout app
+  if (syncedCalorieSettings?.dailyCalorieTarget) {
+    return syncedCalorieSettings.dailyCalorieTarget;
+  }
+
+  // Priority 3: Synced maintenance calories
+  if (syncedCalorieSettings?.maintenanceCalories) {
+    return syncedCalorieSettings.maintenanceCalories;
+  }
+
+  // Priority 4: Fallback to stored local goal
+  return goal || 2000;
+}
+
+/** Update the goal display UI to show source and values */
+function updateGoalDisplay() {
+  const goalMode = localStorage.getItem(STORAGE_KEY_GOAL_MODE) || 'synced';
+  const isCustom = goalMode === 'custom';
+  const customGoalInput = document.getElementById('customGoalInput');
+  const customGoalSection = document.getElementById('customGoalSection');
+  const goalModeToggle = document.getElementById('goalModeToggle');
+  const goalSourceLabel = document.getElementById('goalSourceLabel');
+  const syncedTargetRef = document.getElementById('syncedTargetRef');
+
+  // Update toggle button appearance
+  goalModeToggle.textContent = isCustom ? 'Synced' : 'Custom';
+
+  // Show/hide custom input section
+  customGoalSection.style.display = isCustom ? 'block' : 'none';
+
+  if (isCustom) {
+    // Custom mode: show custom input and synced reference
+    goalSourceLabel.textContent = 'Custom Override';
+    const customVal = parseInt(localStorage.getItem(STORAGE_KEY_CUSTOM_GOAL) || '0', 10);
+    customGoalInput.value = customVal > 0 ? customVal : '';
+    if (syncedCalorieSettings?.dailyCalorieTarget) {
+      syncedTargetRef.textContent = `${syncedCalorieSettings.dailyCalorieTarget.toLocaleString()} kcal`;
+    } else if (syncedCalorieSettings?.maintenanceCalories) {
+      syncedTargetRef.textContent = `${syncedCalorieSettings.maintenanceCalories.toLocaleString()} kcal (maintenance)`;
+    } else {
+      syncedTargetRef.textContent = 'No synced target';
+    }
+  } else {
+    // Synced mode
+    if (syncedCalorieSettings?.dailyCalorieTarget) {
+      goalSourceLabel.textContent = `Synced from workout app`;
+    } else {
+      goalSourceLabel.textContent = 'Synced (no data yet)';
+    }
+  }
+
+  // Recalculate and apply the effective goal
+  goal = calculateEffectiveGoal();
+  const goalInput = document.getElementById('goalInput');
+  if (goalInput) goalInput.value = goal;
+  updateUI();
+}
+
+/** Toggle between synced and custom goal modes */
+function toggleGoalMode() {
+  const currentMode = localStorage.getItem(STORAGE_KEY_GOAL_MODE) || 'synced';
+  const newMode = currentMode === 'custom' ? 'synced' : 'custom';
+  localStorage.setItem(STORAGE_KEY_GOAL_MODE, newMode);
+  updateGoalDisplay();
+}
+
+/** Handle custom goal input changes */
+function onCustomGoalChange() {
+  const customGoalInput = document.getElementById('customGoalInput');
+  const customValue = parseInt(customGoalInput.value || '0', 10);
+  if (customValue > 0) {
+    localStorage.setItem(STORAGE_KEY_CUSTOM_GOAL, String(customValue));
+    goal = customValue;
+    updateUI();
+  }
+}
 
 const goalInput = document.getElementById('goalInput');
 const foodInput = document.getElementById('foodInput');
@@ -1034,13 +1191,28 @@ const logArea = document.getElementById('logArea');
 const emptyState = document.getElementById('emptyState');
 const toast = document.getElementById('toast');
 
+// Initialize with effective goal (respects synced/custom mode)
+goal = calculateEffectiveGoal();
 goalInput.value = goal;
 
 goalInput.addEventListener('input', () => {
+  // Only update if we're in legacy single-goal mode (backward compat)
   goal = parseInt(goalInput.value || '2000', 10);
   localStorage.setItem(STORAGE_KEY_GOAL, String(goal));
   updateUI();
 });
+
+// Set up goal mode toggle button
+const goalModeToggle = document.getElementById('goalModeToggle');
+if (goalModeToggle) {
+  goalModeToggle.addEventListener('click', toggleGoalMode);
+}
+
+// Set up custom goal input
+const customGoalInput = document.getElementById('customGoalInput');
+if (customGoalInput) {
+  customGoalInput.addEventListener('input', onCustomGoalChange);
+}
 
 foodInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -1051,6 +1223,16 @@ foodInput.addEventListener('keydown', (e) => {
 
 logBtn.addEventListener('click', logFood);
 clearBtn.addEventListener('click', clearLog);
+
+// Listen for Firebase auth changes to load synced settings
+fbAuth.onAuthStateChanged((user) => {
+  if (user) {
+    loadSyncedCalorieSettings();
+  } else {
+    syncedCalorieSettings = null;
+    updateGoalDisplay();
+  }
+});
 
 function showToast(message, isError = false) {
   toast.textContent = message;
