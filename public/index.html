@@ -851,9 +851,98 @@ button,input,textarea{
     grid-template-columns:1fr 1fr 1fr;
   }
 }
+
+.auth-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:24px;padding:40px 32px;
+  font-family:'Barlow',sans-serif;
+}
+
+.auth-overlay.hidden{
+  display:none;
+}
+
+.auth-button{
+  display:flex;align-items:center;gap:12px;
+  background:#fff;color:#1c1c1e;
+  border:none;border-radius:14px;
+  padding:14px 24px;cursor:pointer;
+  font-family:'Barlow',sans-serif;font-size:16px;font-weight:700;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  width:100%;max-width:280px;justify-content:center;
+  transition:opacity .15s;
+}
+
+.auth-button:hover{
+  opacity:.9;
+}
+
+.auth-button:active{
+  opacity:.7;
+}
+
+.auth-error{
+  color:#ff4d6d;font-size:12px;text-align:center;display:none;
+  max-width:260px;line-height:1.5;
+}
+
+.user-pill{
+  position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);right:12px;
+  z-index:500;display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:5px 10px 5px 5px;cursor:pointer;
+  font-family:'Barlow',sans-serif;font-size:12px;color:var(--muted2);
+  box-shadow:0 2px 12px rgba(0,0,0,.3);
+}
+
+.user-pill.hidden{
+  display:none;
+}
+
+.user-avatar{
+  width:22px;height:22px;border-radius:50%;object-fit:cover;
+}
+
+.user-avatar.initials{
+  background:var(--accent2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff;
+}
 </style>
 </head>
 <body>
+<div class="auth-overlay" id="authOverlay">
+  <div style="font-size:52px">🍔</div>
+  <div style="text-align:center">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:800;
+                letter-spacing:.04em;text-transform:uppercase;color:var(--text)">
+      FUEL
+    </div>
+    <div style="font-size:13px;color:var(--muted2);margin-top:6px">
+      Sign in to sync across devices
+    </div>
+  </div>
+  <button id="googleSignInBtn" class="auth-button" type="button">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Sign in with Google
+  </button>
+  <div id="authError" class="auth-error"></div>
+</div>
+
+<div class="user-pill hidden" id="userPill">
+  <img id="userAvatar" class="user-avatar" style="display:none">
+  <div id="userInitials" class="user-avatar initials"></div>
+  <span id="userName">Account</span>
+</div>
+
 <div class="app">
   <header class="topbar">
     <div class="brand">
@@ -1005,6 +1094,29 @@ button,input,textarea{
           <div class="card-pad">
             <div class="log-head">
               <div>
+                <div class="section-kicker">Quick Presets</div>
+                <div class="section-title">Custom Foods</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+              <input type="text" id="customFoodName" placeholder="Food name" style="flex:1;min-width:150px;padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-family:inherit">
+              <input type="number" id="customFoodCals" placeholder="Calories" min="0" style="width:80px;padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-family:inherit">
+              <button id="addCustomFoodBtn" class="primary-btn" style="padding:8px 16px;font-size:.9rem" type="button">Add</button>
+            </div>
+
+            <div id="customFoodsList" style="display:flex;flex-direction:column;gap:8px">
+              <div class="empty-state" style="min-height:80px;margin-bottom:0">
+                <div style="font-size:.95rem">No custom foods yet</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-pad">
+            <div class="log-head">
+              <div>
                 <div class="section-kicker">History</div>
                 <div class="section-title">Food Log</div>
               </div>
@@ -1051,7 +1163,7 @@ button,input,textarea{
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
 
 <script>
-// Firebase initialization - reuse same project as IronLog (workout app)
+// Firebase initialization - shared project with IronLog
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyB4p9ladsBpr4CoMPnysQbDNcWMiUR5onc",
   authDomain: "ironlog-41457.firebaseapp.com",
@@ -1064,6 +1176,117 @@ const FIREBASE_CONFIG = {
 if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
 const fbAuth = firebase.auth();
 const fbDb = firebase.firestore();
+
+// ══════════════════════════════════════════════
+//  AUTHENTICATION MANAGEMENT
+// ══════════════════════════════════════════════
+
+/** Get Firebase ID token for API requests */
+async function getIdToken() {
+  const user = fbAuth.currentUser;
+  if (!user) return null;
+  try {
+    return await user.getIdToken(true);
+  } catch (err) {
+    console.warn('Failed to get ID token:', err.message);
+    return null;
+  }
+}
+
+/** Make authenticated fetch request with ID token in Authorization header */
+async function authenticatedFetch(url, options = {}) {
+  const token = await getIdToken();
+  if (!token) throw new Error('Not authenticated');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...(options.headers || {})
+  };
+
+  return fetch(url, { ...options, headers });
+}
+
+/** Show auth overlay and handle sign-in */
+function showAuthUI() {
+  document.getElementById('authOverlay').classList.remove('hidden');
+  document.getElementById('userPill').classList.add('hidden');
+}
+
+/** Hide auth overlay after successful sign-in */
+function hideAuthUI() {
+  document.getElementById('authOverlay').classList.add('hidden');
+}
+
+/** Update user pill with logged-in user info */
+function updateUserPill(user) {
+  const pill = document.getElementById('userPill');
+  const avatar = document.getElementById('userAvatar');
+  const initials = document.getElementById('userInitials');
+  const nameEl = document.getElementById('userName');
+
+  if (user.photoURL) {
+    avatar.src = user.photoURL;
+    avatar.style.display = 'block';
+    initials.style.display = 'none';
+  } else {
+    avatar.style.display = 'none';
+    initials.style.display = 'flex';
+    const initial = (user.displayName || user.email || '?')[0].toUpperCase();
+    initials.textContent = initial;
+  }
+
+  const name = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'Account';
+  nameEl.textContent = name;
+
+  pill.classList.remove('hidden');
+  pill.onclick = () => {
+    if (confirm(`Sign out of FUEL?\n\nYour data will remain synced to ${user.email || 'your account'}.`)) {
+      fbAuth.signOut();
+    }
+  };
+}
+
+/** Initialize auth listeners and UI */
+fbAuth.onAuthStateChanged(async (user) => {
+  if (user) {
+    hideAuthUI();
+    updateUserPill(user);
+    // Only load data when user is authenticated
+    loadEntries();
+    updateUI();
+    // Load synced calorie settings from other app
+    loadSyncedCalorieSettings();
+  } else {
+    showAuthUI();
+    entries = [];
+    renderLog();
+  }
+});
+
+// Set up Google Sign-In button
+document.getElementById('googleSignInBtn').onclick = async () => {
+  const btn = document.getElementById('googleSignInBtn');
+  const errEl = document.getElementById('authError');
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  const originalText = btn.innerHTML;
+  btn.innerHTML = 'Signing in…';
+
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await fbAuth.signInWithPopup(provider);
+    errEl.style.display = 'none';
+  } catch (err) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.innerHTML = originalText;
+    errEl.textContent = err.code === 'auth/popup-blocked'
+      ? 'Popup blocked. Allow popups for this site and try again.'
+      : err.message;
+    errEl.style.display = 'block';
+  }
+};
 
 const STORAGE_KEY_GOAL = 'fuel_goal';
 const STORAGE_KEY_GOAL_MODE = 'fuel_goal_mode';
@@ -1268,8 +1491,11 @@ function cryptoRandomId() {
 }
 
 async function loadEntries() {
+  // Only load if authenticated
+  if (!fbAuth.currentUser) return;
+
   try {
-    const res = await fetch('/api/get-entries', { cache: 'no-store' });
+    const res = await authenticatedFetch('/api/get-entries', { cache: 'no-store' });
     const data = await res.json();
 
     if (!res.ok) {
@@ -1288,15 +1514,19 @@ async function loadEntries() {
 }
 
 async function logFood() {
+  if (!fbAuth.currentUser) {
+    showToast('Sign in to log food', true);
+    return;
+  }
+
   const input = foodInput.value.trim();
   if (!input) return;
 
   setLoading(true);
 
   try {
-    const res = await fetch('/api/log-food', {
+    const res = await authenticatedFetch('/api/log-food', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input })
     });
 
@@ -1469,8 +1699,121 @@ function setMacroBar(barId, valId, value, target) {
   document.getElementById(valId).textContent = `${Math.round(value)}g`;
 }
 
-loadEntries();
-updateUI();
+// ══════════════════════════════════════════════
+//  CUSTOM FOODS MANAGEMENT
+// ══════════════════════════════════════════════
+
+let customFoods = [];
+
+async function loadCustomFoods() {
+  if (!fbAuth.currentUser) return;
+
+  try {
+    const res = await authenticatedFetch('/api/get-custom-foods');
+    const data = await res.json();
+    customFoods = Array.isArray(data) ? data : [];
+    renderCustomFoodsList();
+  } catch (err) {
+    console.warn('Failed to load custom foods:', err.message);
+  }
+}
+
+async function saveCustomFood(name, calories, protein, carbs, fat, tags = '') {
+  if (!fbAuth.currentUser) {
+    showToast('Sign in to save custom foods', true);
+    return;
+  }
+
+  try {
+    const res = await authenticatedFetch('/api/log-custom-food', {
+      method: 'POST',
+      body: JSON.stringify({ name, calories, protein_g: protein, carbs_g: carbs, fat_g: fat, tags })
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to save custom food');
+    }
+
+    showToast(`Saved "${name}" to custom foods`);
+    await loadCustomFoods();
+  } catch (err) {
+    showToast(`Save failed: ${err.message}`, true);
+  }
+}
+
+function renderCustomFoodsList() {
+  const container = document.getElementById('customFoodsList');
+  if (!container) return;
+
+  if (!customFoods.length) {
+    container.innerHTML = '<div class="empty-state" style="min-height:100px"><div style="font-size:.95rem">No custom foods yet</div></div>';
+    return;
+  }
+
+  container.innerHTML = customFoods.map(food => `
+    <div class="custom-food-item" style="padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface2)">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:12px">
+        <div style="flex:1">
+          <div style="font-weight:600;color:var(--text)">${food.name}</div>
+          <div style="font-size:.85rem;color:var(--muted2);margin-top:4px">${Math.round(food.calories)} cal · P:${Math.round(food.protein_g)}g C:${Math.round(food.carbs_g)}g F:${Math.round(food.fat_g)}g</div>
+          ${food.tags ? `<div style="font-size:.75rem;color:var(--muted);margin-top:6px">${food.tags}</div>` : ''}
+        </div>
+        <button class="delete-btn" onclick="deleteCustomFood('${food.id}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:18px;padding:0">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteCustomFood(foodId) {
+  if (!fbAuth.currentUser) return;
+
+  try {
+    const res = await authenticatedFetch('/api/delete-custom-food', {
+      method: 'POST',
+      body: JSON.stringify({ id: foodId })
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to delete custom food');
+    }
+
+    showToast('Custom food removed');
+    await loadCustomFoods();
+  } catch (err) {
+    showToast(`Delete failed: ${err.message}`, true);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  EVENT LISTENERS & INITIALIZATION
+// ══════════════════════════════════════════════
+
+// Custom food form
+document.getElementById('addCustomFoodBtn').onclick = async () => {
+  const name = document.getElementById('customFoodName').value.trim();
+  const cals = parseInt(document.getElementById('customFoodCals').value || '0', 10);
+
+  if (!name || cals <= 0) {
+    showToast('Enter food name and calories', true);
+    return;
+  }
+
+  await saveCustomFood(name, cals, 0, 0, 0);
+  document.getElementById('customFoodName').value = '';
+  document.getElementById('customFoodCals').value = '';
+};
+
+// Allow Enter to add custom food
+document.getElementById('customFoodCals').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('addCustomFoodBtn').click();
+  }
+});
+
+// Food input is initialized via listener already in place
+
+// Auth state listener will trigger loadEntries when user signs in
 </script>
 </body>
 </html>

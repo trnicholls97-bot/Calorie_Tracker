@@ -1,8 +1,12 @@
-export const config = { runtime: 'nodejs' };
+export const config = {
+  runtime: 'nodejs'
+};
 
-import { getEntries, verifyToken, extractTokenFromHeader } from '../lib/firebase.js';
+import { getCustomFoods, verifyToken, extractTokenFromHeader } from '../lib/firebase.js';
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET') return res.status(405).end();
+
   try {
     // Verify Firebase ID token and extract uid
     const authHeader = req.headers.authorization;
@@ -18,11 +22,12 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: err.message });
     }
 
-    // Read from users/{uid}/entries
-    const entries = await getEntries(uid);
-    return res.status(200).json(entries);
+    // Read from users/{uid}/custom_foods
+    const foods = await getCustomFoods(uid);
+
+    res.status(200).json(foods);
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
       error: error.message,
       stack: error.stack
     });
